@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Starling — an infinite space sandbox</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="description" content="A gentle, endless space sandbox for small explorers." />
+    <meta name="theme-color" content="#241c33" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #241c33;
+        overscroll-behavior: none;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        font-family: ui-rounded, 'SF Pro Rounded', 'Nunito', 'Trebuchet MS', system-ui, sans-serif;
+      }
+      #stage {
+        display: block;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      /*
+        Paper grain and vignette are static full-screen effects. Compositing
+        them in CSS hands them to the GPU; doing the same work as canvas
+        passes cost roughly two thirds of the frame budget at 2x pixel ratio.
+      */
+      #grain,
+      #vignette {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+      }
+      /* The HUD lives on its own canvas above the paper, so buttons and text
+         stay crisp and un-dimmed by the vignette. */
+      #ui {
+        display: block;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 3;
+      }
+      #grain {
+        mix-blend-mode: overlay;
+        opacity: 0.15;
+        background-repeat: repeat;
+        /* background-image is generated at boot from a noise tile. */
+      }
+      #vignette {
+        opacity: var(--vignette, 0.34);
+        transition: opacity 0.6s ease;
+        background:
+          radial-gradient(
+            ellipse 78% 62% at 50% 47%,
+            rgba(0, 0, 0, 0) 40%,
+            rgba(12, 8, 22, 0.22) 72%,
+            rgba(10, 6, 20, 0.92) 100%
+          );
+      }
+      /* Rotate hint for landscape phones — the game is designed for portrait. */
+      #rotate {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        text-align: center;
+        padding: 2rem;
+        background: #241c33;
+        color: #f3e3c6;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        z-index: 10;
+      }
+      @media (orientation: landscape) and (max-height: 520px) {
+        #rotate {
+          display: grid;
+        }
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #241c33;
+        color: #f3e3c6;
+        letter-spacing: 0.35em;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        transition: opacity 0.6s ease;
+        z-index: 5;
+      }
+      #boot.gone {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="grain"></div>
+    <div id="vignette"></div>
+    <canvas id="ui"></canvas>
+    <div id="boot">Starling</div>
+    <div id="rotate">
+      <p>Turn your phone upright<br />to keep exploring&nbsp;✷</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
