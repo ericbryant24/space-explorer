@@ -56,7 +56,7 @@ export interface SolarSystem {
   stars: Star[]
   planets: Planet[]
   rocks: Rock[]
-  spaceEgg: SpaceEgg | null
+  spaceEggs: SpaceEgg[]
   /** Distance from the centre at which warp rings appear. */
   extent: number
   /** Accumulated orbital time. */
@@ -99,8 +99,9 @@ function generateSystem(sx: number, sy: number): SolarSystem {
   let orbit = rng.range(300, 420) + primaryRadius
   for (let i = 0; i < planetCount; i++) {
     const planet = makePlanet(seed, i, orbit, rng)
-    // Hide a curiosity on roughly a third of landable worlds.
-    if (planet.landable && rng.chance(0.34)) {
+    // Hide a curiosity on a good fraction of landable worlds. There are a lot
+    // of them to find, so this is generous on purpose.
+    if (planet.landable && rng.chance(0.44)) {
       const egg = pickSurfaceEgg(rng, planet.biome)
       planet.eggId = egg ? egg.id : null
     }
@@ -132,18 +133,24 @@ function generateSystem(sx: number, sy: number): SolarSystem {
     }
   }
 
-  // Roughly one system in three has something odd floating in the dark.
-  let spaceEgg: SpaceEgg | null = null
-  if (rng.chance(0.32)) {
+  // Most systems have nothing odd floating in the dark; some have one, and a
+  // few have two, far enough apart that you won't see both at once.
+  const spaceEggs: SpaceEgg[] = []
+  const oddities = rng.pickWeighted([0, 1, 2], [58, 32, 10])
+  const usedIds = new Set<string>()
+  for (let i = 0; i < oddities; i++) {
     const egg = pickSpaceEgg(rng)
-    const a = rng.range(0, TAU)
+    if (usedIds.has(egg.id)) continue
+    usedIds.add(egg.id)
+    // Spread them around the system rather than clustering.
+    const a = rng.range(0, TAU) + (i * TAU) / oddities
     const d = rng.range(orbit * 0.35, orbit * 0.95)
-    spaceEgg = {
+    spaceEggs.push({
       id: egg.id,
       x: Math.cos(a) * d,
       y: Math.sin(a) * d,
       driftPhase: rng.range(0, TAU),
-    }
+    })
   }
 
   const extent = orbit + 360
@@ -156,7 +163,7 @@ function generateSystem(sx: number, sy: number): SolarSystem {
     stars,
     planets,
     rocks,
-    spaceEgg,
+    spaceEggs,
     extent,
     time: rng.range(0, 500),
   }
@@ -190,11 +197,11 @@ export function updateSystem(system: SolarSystem, dt: number) {
     rock.y = Math.sin(rock.orbitAngle) * rock.orbitRadius
   }
 
-  if (system.spaceEgg) {
-    // A gentle bob so it feels adrift rather than nailed down.
-    system.spaceEgg.driftPhase += dt * 0.22
-    void t
+  for (const egg of system.spaceEggs) {
+    // A gentle bob so they feel adrift rather than nailed down.
+    egg.driftPhase += dt * 0.22
   }
+  void t
 }
 
 const cache = new Map<string, SolarSystem>()

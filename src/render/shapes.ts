@@ -200,20 +200,33 @@ export function cloudPath(
   bumps = 4,
 ) {
   const halfW = width / 2
+
+  // Uneven bump widths matter as much as uneven heights — equal-width bumps
+  // read as a row of identical arches rather than as a cloud.
+  const widths: number[] = []
+  let total = 0
+  for (let i = 0; i < bumps; i++) {
+    const w = 0.55 + fbm1(seed, i * 3.7 + 5, 2) * 1.1
+    widths.push(w)
+    total += w
+  }
+
   ctx.beginPath()
   ctx.moveTo(x - halfW, y)
-  // Bumps left to right, each a semicircle-ish arc of varying height.
-  const step = width / bumps
+  let cursor = x - halfW
   for (let i = 0; i < bumps; i++) {
-    const bx = x - halfW + step * i
-    // Deterministic variation so a given cloud always has the same silhouette.
-    const lift = 0.55 + fbm1(seed, i * 2.7 + 1, 2) * 0.9
-    const h = height * lift
-    ctx.bezierCurveTo(bx + step * 0.06, y - h, bx + step * 0.94, y - h, bx + step, y)
+    const span = (widths[i] / total) * width
+    // An envelope so the middle of the cloud piles higher than its edges.
+    const centre = (cursor + span / 2 - (x - halfW)) / width
+    const envelope = 0.42 + Math.sin(centre * Math.PI) * 0.75
+    const h = height * envelope * (0.7 + fbm1(seed, i * 2.7 + 1, 2) * 0.7)
+    // Pull the control points outward so each bump bulges rather than arching.
+    ctx.bezierCurveTo(cursor - span * 0.12, y - h, cursor + span * 1.12, y - h, cursor + span, y)
+    cursor += span
   }
   ctx.lineTo(x + halfW, y)
   // A gently sagging underside.
-  ctx.quadraticCurveTo(x, y + height * 0.14, x - halfW, y)
+  ctx.quadraticCurveTo(x, y + height * 0.16, x - halfW, y)
   ctx.closePath()
 }
 

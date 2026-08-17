@@ -8,12 +8,16 @@
 import { clamp, damp, easeOutCubic } from '../core/math'
 import { save } from '../core/save'
 import { CREAM, INK, withAlpha } from '../render/palette'
-import { blobPath, ink, roundRectPath, type Ctx } from '../render/shapes'
-import { COLLECTION, COLLECTION_TOTAL, drawUnknown, type CollectionEntry } from '../world/collection'
+import { blobPath, ink, roundRectPath, starPath, type Ctx } from '../render/shapes'
+import { COLLECTION, COLLECTION_TOTAL, SECTIONS, drawUnknown, type CollectionEntry } from '../world/collection'
 import { drawCloseButton, wrapText } from './hud'
 
 const TILE_GAP = 10
 const HEADER = 96
+/** Vertical room a section heading takes above its first row of tiles. */
+const SECTION_HEAD = 44
+/** Breathing room after a section's last row. */
+const SECTION_GAP = 18
 
 export class StickerBook {
   private opened = false
@@ -148,15 +152,12 @@ export class StickerBook {
       70,
     )
 
-    // Grid.
+    // Grid, laid out section by section.
     const cols = w < 380 ? 3 : 4
     const pad = 18
     const size = (w - pad * 2 - TILE_GAP * (cols - 1)) / cols
-    const rows = Math.ceil(COLLECTION.length / cols)
     const viewTop = HEADER
     const viewH = h - HEADER - 14 - bottomInset
-    const contentH = rows * (size + TILE_GAP) + 30
-    this.maxScroll = Math.max(0, contentH - viewH)
 
     ctx.save()
     ctx.beginPath()
@@ -164,31 +165,47 @@ export class StickerBook {
     ctx.clip()
 
     this.tiles = []
-    for (let i = 0; i < COLLECTION.length; i++) {
-      const entry = COLLECTION[i]
-      const col = i % cols
-      const row = Math.floor(i / cols)
-      const x = pad + col * (size + TILE_GAP)
-      const y = viewTop + row * (size + TILE_GAP) - this.scroll
-      if (y + size < viewTop - 20 || y > viewTop + viewH + 20) continue
-      this.tiles.push({ entry, x, y, size })
+    let cursor = viewTop - this.scroll
+    for (const section of SECTIONS) {
+      const rows = Math.ceil(section.entries.length / cols)
+      const blockH = SECTION_HEAD + rows * (size + TILE_GAP) + SECTION_GAP
+      // Skip whole sections that are nowhere near the viewport.
+      if (cursor + blockH < viewTop - 40 || cursor > viewTop + viewH + 40) {
+        cursor += blockH
+        continue
+      }
 
-      const has = save.has(entry.id)
-      roundRectPath(ctx, x, y, size, size, 14)
-      ctx.fillStyle = withAlpha(has ? '#2f2747' : '#241d33', has ? 0.95 : 0.7)
-      ctx.fill()
-      ink(ctx, 1.8, withAlpha(CREAM, has ? 0.34 : 0.14))
-      ctx.stroke()
+      const done = section.entries.reduce((n, e) => n + (save.has(e.id) ? 1 : 0), 0)
+      this.drawSectionHead(ctx, section.title, section.blurb, done, section.entries.length, pad, w, cursor)
 
-      ctx.save()
-      ctx.beginPath()
-      roundRectPath(ctx, x, y, size, size, 14)
-      ctx.clip()
-      ctx.translate(x + size / 2, y + size / 2)
-      if (has) entry.draw(ctx, size, this.t)
-      else drawUnknown(ctx, size)
-      ctx.restore()
+      for (let i = 0; i < section.entries.length; i++) {
+        const entry = section.entries[i]
+        const x = pad + (i % cols) * (size + TILE_GAP)
+        const y = cursor + SECTION_HEAD + Math.floor(i / cols) * (size + TILE_GAP)
+        if (y + size < viewTop - 20 || y > viewTop + viewH + 20) continue
+        this.tiles.push({ entry, x, y, size })
+
+        const has = save.has(entry.id)
+        roundRectPath(ctx, x, y, size, size, 14)
+        ctx.fillStyle = withAlpha(has ? '#2f2747' : '#241d33', has ? 0.95 : 0.7)
+        ctx.fill()
+        ink(ctx, 1.8, withAlpha(CREAM, has ? 0.34 : 0.14))
+        ctx.stroke()
+
+        ctx.save()
+        ctx.beginPath()
+        roundRectPath(ctx, x, y, size, size, 14)
+        ctx.clip()
+        ctx.translate(x + size / 2, y + size / 2)
+        if (has) entry.draw(ctx, size, this.t)
+        else drawUnknown(ctx, size)
+        ctx.restore()
+      }
+      cursor += blockH
     }
+    // Total height is wherever the cursor ended up, in unscrolled coordinates.
+    const contentH = cursor + this.scroll - viewTop + 16
+    this.maxScroll = Math.max(0, contentH - viewH)
     ctx.restore()
 
     // Scroll hint fades at the edges of the list.
@@ -217,6 +234,47 @@ export class StickerBook {
     if (this.selected) this.drawDetail(ctx, w, h)
 
     ctx.restore()
+  }
+
+  /** A section heading: name, how far through it you are, and a hairline. */
+  private drawSectionHead(
+    ctx: Ctx,
+    title: string,
+    blurb: string,
+    done: number,
+    total: number,
+    pad: number,
+    w: number,
+    y: number,
+  ) {
+    const complete = done === total
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.font = '600 14px ui-rounded, "SF Pro Rounded", Nunito, system-ui, sans-serif'
+    ctx.fillStyle = withAlpha(CREAM, complete ? 1 : 0.9)
+    ctx.fillText(title, pad, y + 18)
+    const titleW = ctx.measureText(title).width
+
+    // A little star once a whole section is filled in.
+    if (complete) {
+      starPath(ctx, pad + titleW + 12, y + 13, 6, 2.8, 5, -Math.PI / 2 + this.t * 0.4)
+      ctx.fillStyle = '#f0d894'
+      ctx.fill()
+    }
+
+    ctx.font = '400 11px ui-rounded, "SF Pro Rounded", Nunito, system-ui, sans-serif'
+    ctx.fillStyle = withAlpha(CREAM, 0.5)
+    ctx.fillText(blurb, pad, y + 33)
+    ctx.textAlign = 'right'
+    ctx.fillStyle = withAlpha(CREAM, complete ? 0.85 : 0.55)
+    ctx.fillText(`${done}/${total}`, w - pad, y + 18)
+    ctx.textAlign = 'left'
+
+    ink(ctx, 1, withAlpha(CREAM, 0.16))
+    ctx.beginPath()
+    ctx.moveTo(pad, y + 39)
+    ctx.lineTo(w - pad, y + 39)
+    ctx.stroke()
   }
 
   private drawDetail(ctx: Ctx, w: number, h: number) {

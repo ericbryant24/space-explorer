@@ -137,7 +137,7 @@ class Game {
           ),
         }
       }),
-      spaceEgg: this.system.spaceEgg?.id ?? null,
+      spaceEggs: this.system.spaceEggs.map((e) => e.id),
     }
   }
 

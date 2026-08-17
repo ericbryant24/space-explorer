@@ -156,20 +156,17 @@ export class SpaceScene {
       this.cam.follow(this.ship.x, this.ship.y, dt, 6, this.ship.vx * 0.28, this.ship.vy * 0.28)
     }
 
-    // Space curiosities are found simply by getting close.
-    const egg = this.system.spaceEgg
-    if (egg) {
+    // Space curiosities are found simply by getting close to one.
+    for (const egg of this.system.spaceEggs) {
       const def = getEgg(egg.id)
-      if (def) {
-        const ey = egg.y + Math.sin(egg.driftPhase) * 14
-        if (dist(this.ship.x, this.ship.y, egg.x, ey) < def.reach) {
-          if (!this.burstedEggs.has(def.id)) {
-            this.burstedEggs.add(def.id)
-            this.burst = { x: egg.x, y: ey, p: 0 }
-          }
-          this.deps.discover(eggKey(def.id), def.title, def.note)
-        }
+      if (!def) continue
+      const ey = egg.y + Math.sin(egg.driftPhase) * 14
+      if (dist(this.ship.x, this.ship.y, egg.x, ey) >= def.reach) continue
+      if (!this.burstedEggs.has(def.id)) {
+        this.burstedEggs.add(def.id)
+        this.burst = { x: egg.x, y: ey, p: 0 }
       }
+      this.deps.discover(eggKey(def.id), def.title, def.note)
     }
 
     // Past the edge of the system? Off to the next one.
@@ -348,7 +345,7 @@ export class SpaceScene {
       }
     }
 
-    this.drawSpaceEgg(ctx)
+    this.drawSpaceEggs(ctx)
 
     // Zoomed all the way out the ship is a speck, so ring it.
     if (this.mapOpen) {
@@ -506,28 +503,29 @@ export class SpaceScene {
     }
   }
 
-  private drawSpaceEgg(ctx: Ctx) {
-    const egg = this.system.spaceEgg
-    if (!egg) return
-    const def = getEgg(egg.id)
-    if (!def) return
-    const y = egg.y + Math.sin(egg.driftPhase) * 14
-    // Only draw when roughly on screen — some of these are big.
-    const b = this.cam.bounds(260)
-    if (egg.x < b.x0 || egg.x > b.x1 || y < b.y0 || y > b.y1) return
-    ctx.save()
-    ctx.translate(egg.x, y)
-    ctx.rotate(Math.sin(egg.driftPhase * 0.4) * 0.06)
-    def.draw(ctx, this.t)
-    ctx.restore()
-    // A faint ring so you can spot it from a distance.
-    if (this.mapOpen) {
+  private drawSpaceEggs(ctx: Ctx) {
+    // Some of these vignettes are a couple of hundred units across, so cull
+    // with a generous margin rather than at the screen edge.
+    const b = this.cam.bounds(320)
+    for (const egg of this.system.spaceEggs) {
+      const def = getEgg(egg.id)
+      if (!def) continue
+      const y = egg.y + Math.sin(egg.driftPhase) * 14
+      if (egg.x < b.x0 || egg.x > b.x1 || y < b.y0 || y > b.y1) continue
       ctx.save()
-      ink(ctx, 2 / this.cam.zoom, withAlpha(CREAM, 0.35))
-      ctx.beginPath()
-      ctx.arc(egg.x, y, def.reach, 0, TAU)
-      ctx.stroke()
+      ctx.translate(egg.x, y)
+      ctx.rotate(Math.sin(egg.driftPhase * 0.4) * 0.06)
+      def.draw(ctx, this.t)
       ctx.restore()
+      // On the map, ring them so they're findable from across the system.
+      if (this.mapOpen) {
+        ctx.save()
+        ink(ctx, 2 / this.cam.zoom, withAlpha(CREAM, 0.35))
+        ctx.beginPath()
+        ctx.arc(egg.x, y, def.reach, 0, TAU)
+        ctx.stroke()
+        ctx.restore()
+      }
     }
   }
 

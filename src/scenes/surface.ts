@@ -495,12 +495,10 @@ export class SurfaceScene {
       const x = mod(rng.next() * span - this.t * speed - this.camX * 0.05, span) - 200 * scale
       ctx.save()
       ctx.globalAlpha = 0.16 + cover * 0.3
-      cloudPath(ctx, x, y, 150 * scale, 42 * scale, hashCombine(this.planet.seed, i), rng.int(3, 5))
+      // One path only. Overlaying a second cloud on top of the first read as a
+      // double row of arches rather than as depth.
+      cloudPath(ctx, x, y, 170 * scale, 46 * scale, hashCombine(this.planet.seed, i), rng.int(4, 7))
       ctx.fillStyle = CREAM
-      ctx.fill()
-      // A slightly brighter cap along the sunward top edge.
-      ctx.globalAlpha *= 0.5
-      cloudPath(ctx, x, y - 5 * scale, 132 * scale, 34 * scale, hashCombine(this.planet.seed, i, 2), 3)
       ctx.fill()
       ctx.restore()
     }

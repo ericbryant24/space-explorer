@@ -5,7 +5,8 @@ around a solar system, land on planets, walk about, poke things, dig things up,
 and drift off the edge into the next system — forever.
 
 There is no score, no timer and no way to lose. The only progression is a
-sticker book that slowly fills up with the things you've found.
+sticker book of 101 things to find: ten kinds of world, four things you can dig
+up, and 87 curiosities hidden across the universe.
 
 ## Playing
 
@@ -46,16 +47,38 @@ which sector you were last in.
 
 ## The Easter eggs
 
-Scattered rarely across worlds and drifting in the dark between them are around
-thirty small vignettes that nod to films, television and books — a tall black
-slab on an empty plain, a whale and a bowl of petunias falling through the sky,
-a wardrobe standing in the snow, four elephants on the back of a very large
-turtle.
+Hidden across worlds and drifting in the dark between them are **87 small
+vignettes** — 65 on planet surfaces, 22 out in space — that nod to films,
+television, books, folklore and real spaceflight. A tall black slab on an empty
+plain. A whale and a bowl of petunias falling through the sky. A wardrobe
+standing in the snow. Four elephants on the back of a very large turtle. A
+house that walks on chicken legs. A gold ring on a chain above a crack in the
+floor. Eighteen gold hexagons unfolding like a flower.
 
 Every one is drawn from scratch in code as an original silhouette or shape
 study, and titled descriptively rather than by its source. They're visual
 rhymes, not reproductions: no franchise's characters, artwork, logos or names
 appear anywhere in this project. Recognising them is the fun.
+
+They live in three themed modules under `src/world/eggs/`, which is also how the
+sticker book groups them:
+
+| Section | Where it's from | Count |
+| --- | --- | --- |
+| From the Screen | films and television | 35 |
+| From the Page | books, fairy tales, folklore | 38 |
+| Left Behind | spacecraft and monuments people really built | 14 |
+
+Surface eggs declare which biomes they suit, so a lighthouse only turns up on a
+water world and a sandworm only in dunes. Roughly two in five landable planets
+hide one; a third of systems have something odd floating between the orbits, and
+a few have two.
+
+Adding one means appending an object to a themed module and nothing else — the
+registry, the sticker book, the placement tables and the totals all derive from
+it. Each egg can pass a `thumb` hint to tune how it's fitted into a sticker
+tile, because a spinning top and a world-carrying turtle need very different
+framing.
 
 ## Running it
 
@@ -82,7 +105,8 @@ src/
   render/     palette, hand-drawn shape primitives, camera and starfield,
               paper texture
   world/      universe and system generation, planets, surfaces, creatures,
-              the ship and explorer, Easter eggs, the collection
+              the ship and explorer, the collection
+  world/eggs/ the Easter eggs — shared drawing kit plus one module per theme
   scenes/     flying around a system, walking on a surface
   ui/         HUD, sticker book
   main.ts     canvas setup, frame loop, transitions between scenes
@@ -103,6 +127,11 @@ A few things worth knowing if you poke at it:
 - **Colour helpers compose.** `mix`, `shade`, `tint` and `withAlpha` in
   `render/palette.ts` all accept hex or `rgb()` and return hex, so nesting them
   works.
+- **Overlapping translucent shapes double-darken.** Clouds, and the cloud
+  dragon, are each a single closed path for that reason — a pile of
+  semi-transparent circles shows every seam. `shapes.ts` has a `cloudPath` that
+  varies bump widths as well as heights, since equal bumps read as a row of
+  arches.
 
 `window.starling.probe()` returns a snapshot of the current state — mode,
 sector, planet positions in screen space, what's hidden where. It exists so

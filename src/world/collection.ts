@@ -1,8 +1,8 @@
 /**
- * The sticker book's contents: everything that can be found, in one list.
+ * The sticker book's contents: everything that can be found.
  *
- * Three kinds of entry — the hidden curiosities, the things you can dig up, and
- * the kinds of world you've set foot on. Ids here are what gets persisted, so
+ * Three kinds of entry — the kinds of world you've set foot on, the things you
+ * can dig up, and the hidden curiosities. Ids here are what gets persisted, so
  * they must stay stable.
  */
 
@@ -10,7 +10,7 @@ import { TAU } from '../core/math'
 import { hashString } from '../core/rng'
 import { CREAM, HUES, INK, PLANET_PALETTES, withAlpha, shade, tint } from '../render/palette'
 import { blobPath, ink, leafPath, starPath, type Ctx } from '../render/shapes'
-import { EGGS, drawEggThumb, type EasterEgg } from './eggs'
+import { ORBIT_EGGS, PAGE_EGGS, SCREEN_EGGS, drawEggThumb, type EasterEgg } from './eggs'
 import { DIG_LABELS, type DigReward } from './surface'
 import type { Biome } from './planet'
 
@@ -186,23 +186,42 @@ const BIOME_ORDER: readonly Biome[] = [
   'meadow', 'forest', 'ocean', 'desert', 'rocky', 'ice', 'volcanic', 'crystal', 'fungal', 'gas',
 ]
 
-export const COLLECTION: readonly CollectionEntry[] = [
-  ...BIOME_ORDER.map<CollectionEntry>((biome) => ({
-    id: biomeKey(biome),
-    kind: 'biome',
-    title: BIOME_INFO[biome].title,
-    note: BIOME_INFO[biome].note,
-    draw: (ctx, size, t) => drawBiomeThumb(ctx, biome, size, t),
-  })),
-  ...DIG_ORDER.map<CollectionEntry>((reward) => ({
-    id: digKey(reward),
-    kind: 'dig',
-    title: DIG_LABELS[reward].title,
-    note: DIG_LABELS[reward].note,
-    draw: (ctx, size, t) => drawDigThumb(ctx, reward, size, t),
-  })),
-  ...EGGS.map(eggEntry),
+export interface CollectionSection {
+  title: string
+  /** One line under the heading, for a bit of context. */
+  blurb: string
+  entries: readonly CollectionEntry[]
+}
+
+const WORLD_ENTRIES = BIOME_ORDER.map<CollectionEntry>((biome) => ({
+  id: biomeKey(biome),
+  kind: 'biome',
+  title: BIOME_INFO[biome].title,
+  note: BIOME_INFO[biome].note,
+  draw: (ctx, size, t) => drawBiomeThumb(ctx, biome, size, t),
+}))
+
+const DIG_ENTRIES = DIG_ORDER.map<CollectionEntry>((reward) => ({
+  id: digKey(reward),
+  kind: 'dig',
+  title: DIG_LABELS[reward].title,
+  note: DIG_LABELS[reward].note,
+  draw: (ctx, size, t) => drawDigThumb(ctx, reward, size, t),
+}))
+
+/**
+ * The book, in sections. Eighty-odd curiosities in one undifferentiated grid is
+ * a lot to scan, so they're split by where they come from.
+ */
+export const SECTIONS: readonly CollectionSection[] = [
+  { title: 'Worlds', blurb: 'Kinds of ground you have stood on', entries: WORLD_ENTRIES },
+  { title: 'Finds', blurb: 'Things that were under the ground', entries: DIG_ENTRIES },
+  { title: 'From the Screen', blurb: 'Half-remembered from films and television', entries: SCREEN_EGGS.map(eggEntry) },
+  { title: 'From the Page', blurb: 'Half-remembered from books and old stories', entries: PAGE_EGGS.map(eggEntry) },
+  { title: 'Left Behind', blurb: 'Things people really built, and really left', entries: ORBIT_EGGS.map(eggEntry) },
 ]
+
+export const COLLECTION: readonly CollectionEntry[] = SECTIONS.flatMap((s) => s.entries)
 
 export const COLLECTION_TOTAL = COLLECTION.length
 
